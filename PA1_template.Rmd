@@ -105,6 +105,73 @@ mean_interval[mean_interval$mean_steps==max(mean_interval$mean_steps),]
 
 ## Imputing missing values
 
+There are a number of days/intervals where there are missing **steps** value. The presence of missing value may introduce bias into some calculations or summaries of the data. 
 
+It is not uncommon to patch the data with some defined value derived from data set. The completeness of data (with the patched data) provides us a better picture of the data summmary.
+
+First, let's find out the rows of data that needs to be patched (with steps value of NA):
+
+```{r}
+# Construct a data frame which consist of all activity that has NA value in it:
+
+na_activity <- activity_df[is.na(activity_df$steps),]
+
+head(na_activity,10)
+
+```
+
+Following shows the number of rows that needs to be patched:
+
+```{r}
+# number of records that needs to be patched:
+
+nrow(na_activity)
+```
+
+It shows that 2304 rows of data needs to be patched. We will use the average value of steps for specific interval to fill in the gap here. This piece of information is already available in our previous derived data frame named *mean_interval*. 
+
+We will use the mean_steps value available in *mean_interval* to patch the data.
+
+```{r}
+tmp_merge <- merge(mean_interval,na_activity, by.x="interval", by.y="interval")
+merge_df <- select(tmp_merge, mean_steps, date, interval)
+colnames(merge_df)[1] <- "steps"
+```
+
+Let's also derived a data set that has **steps** value not equal to NA:
+
+
+```{r}
+non_na_activity <- activity_df[!is.na(activity_df$steps),]
+```
+
+The patched data set will be merged with this newly derived data frame, this yield us a new data frame that has all the missing value filled up
+
+```{r}
+complete_df <- rbind(non_na_activity, merge_df)
+complete_df <- sqldf('select * from complete_df order by date, interval;')
+```
+
+We will now make a new histogram to show the the total number of steps taken each day
+
+
+```{r}
+day_df <- group_by(complete_df,date)
+total_day <- summarise(day_df, sum_steps=sum(steps))
+hist(total_day$sum_steps, col="orange", breaks=20, main="Histogram: Total Number of steps Taken Per Day (with patched data)", xlab="Total Steps", ylab="Frequency")
+```
+
+Here's the calculation of **mean and median of the total number of steps taken per day** after tha missing value has been patched:
+
+```{r}
+
+mean(total_day$sum_steps, na.rm=TRUE)
+median(total_day$sum_steps, na.rm=TRUE)
+
+```
+
+These values has not much difference with the values in first part of the assignment. This is due to the data used to patch the NA value is derived from every 5 minutes interval mean. 
+
+Although the difference is small, we can see the median is now equal to mean. This means the current data set is more symmetrical than the previous one. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
