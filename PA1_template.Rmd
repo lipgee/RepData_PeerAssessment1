@@ -149,8 +149,14 @@ The patched data set will be merged with this newly derived data frame, this yie
 
 ```{r}
 complete_df <- rbind(non_na_activity, merge_df)
+```
+
+Sort it based on date and interval:
+
+```{r}
 complete_df <- sqldf('select * from complete_df order by date, interval;')
 ```
+
 
 We will now make a new histogram to show the the total number of steps taken each day
 
@@ -175,3 +181,26 @@ These values has not much difference with the values in first part of the assign
 Although the difference is small, we can see the median is now equal to mean. This means the current data set is more symmetrical than the previous one. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+In order to compare the activity patterns, we need to add a column in our patched data set to indicate if the date data is a weekday or weekend:
+
+```{r}
+week_day <- weekdays(as.Date(complete_df$date))
+week_day <- ifelse(week_day %in% c("Monday","Tuesday","Wednesday","Thursday", "Friday"), "weekday", "weekend")
+complete_df <- cbind(complete_df, week_day)
+```
+
+Group the data by interval and find out the mean per interval:
+
+```{r}
+interval_df <- group_by(complete_df,interval, week_day)
+mean_interval <- summarise(interval_df, mean_steps=mean(steps,na.rm=TRUE))
+``` 
+
+Following code snippet produces the time series line chart of average number of steps taken across all day divided by weekday and weekend facet:
+
+```{r}
+g4 <- ggplot(mean_interval, aes(interval,mean_steps))
+plot4 <- g4 + geom_line(colour="blue") + theme_bw(base_size = 10) + labs(x = "Interval") + labs(y = "Average Number of Steps Taken Across All Day") + ggtitle("Average Daily Activity Pattern") + theme(plot.title = element_text(lineheight=.8, face="bold")) + facet_wrap(~week_day, nrow=2)
+plot4
+```
